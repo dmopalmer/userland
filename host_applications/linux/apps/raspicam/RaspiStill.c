@@ -306,6 +306,9 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
    int valid = 1;
    int i;
 
+   // If the the roi is set by command line but width and height are not, then set them automatically 
+   int autosize = 1;
+   
    for (i = 1; i < argc && valid; i++)
    {
       int command_id, num_parameters;
@@ -338,16 +341,26 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandWidth: // Width > 0
          if (sscanf(argv[i + 1], "%u", &state->width) != 1)
+         {
             valid = 0;
+         }
          else
+         {
             i++;
+            autosize = 0;
+         }
          break;
 
       case CommandHeight: // Height > 0
          if (sscanf(argv[i + 1], "%u", &state->height) != 1)
+         {
             valid = 0;
+         }
          else
+         {
             i++;
+            autosize = 0;
+         }
          break;
 
       case CommandQuality: // Quality = 1-100
@@ -510,6 +523,13 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
    {
       fprintf(stderr, "Invalid command line option (%s)\n", argv[i]);
       return 1;
+   }
+
+   if (autosize && (state->camera_parameters.roi.w != 1 || state->camera_parameters.roi.h != 1))
+   {    // The cropping algorithm is undocumented and closed source.
+        // Does this replicate the number of raw pixels?
+      state->width  = ((long)(state->camera_parameters.roi.w * 65536) * state->width)/65536;
+      state->height = ((long)(state->camera_parameters.roi.h * 65536) * state->height)/65536;
    }
 
    return 0;
